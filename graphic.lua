@@ -70,14 +70,14 @@ btn.BackgroundColor3 = Color3.fromRGB(30,30,30)
 btn.TextColor3 = Color3.new(1,1,1)
 btn.TextSize = 12
 btn.Font = Enum.Font.Code
-btn.Text = "FPS BOOST : ON"
+btn.Text = "FPS BOOST v0.1 : ON"
 btn.BorderSizePixel = 0
 btn.Active = true
 btn.Draggable = true
 
 btn.MouseButton1Click:Connect(function()
     getgenv().AUTO_POTATO = not getgenv().AUTO_POTATO
-    btn.Text = "FPS BOOST : "..(getgenv().AUTO_POTATO and "ON" or "OFF")
+    btn.Text = "FPS BOOST v0.1 : "..(getgenv().AUTO_POTATO and "ON" or "OFF")
 
     if getgenv().AUTO_POTATO then
         ApplyPotato()
