@@ -1,26 +1,24 @@
--- FPS BOOST FINAL (ANDROID SAFE)
--- SELF LOWPOLY | OTHER PLAYER INVISIBLE
--- NO WATER | NO ANIMATION | NO EFFECT
--- DELTA EXECUTOR
+-- FPS BOOST FINAL (DELTA ANDROID SAFE)
+-- SELF LOWPOLY | OTHER PLAYER FULL INVISIBLE
+-- NO WATER | NO SKY | NO CLOUD | NO ANIMATION | NO EFFECT
 
 if getgenv().FPS_BOOST ~= nil then return end
 getgenv().FPS_BOOST = true
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Terrain = workspace:FindFirstChildOfClass("Terrain")
 
--- ================== OBJECT OPTIMIZER ==================
+-- ================== OPTIMIZE MAP OBJECT ==================
 local function OptimizeObject(v)
     if v:IsA("BasePart") then
         v.Material = Enum.Material.Plastic
         v.Reflectance = 0
         v.CastShadow = false
-
     elseif v:IsA("Decal") or v:IsA("Texture") then
         v.Transparency = 1
-
     elseif v:IsA("ParticleEmitter")
         or v:IsA("Trail")
         or v:IsA("Beam")
@@ -30,7 +28,7 @@ local function OptimizeObject(v)
     end
 end
 
--- ================== DISABLE ANIMATIONS ==================
+-- ================== DISABLE ALL ANIMATION ==================
 local function DisableAnimations(char)
     for _,v in ipairs(char:GetDescendants()) do
         if v:IsA("Animator") or v:IsA("AnimationController") then
@@ -42,40 +40,57 @@ local function DisableAnimations(char)
 end
 
 -- ================== SELF LOW POLY ==================
-local function LowPolySelf(char)
+local function ApplySelfLowPoly(char)
     for _,v in ipairs(char:GetDescendants()) do
         if v:IsA("BasePart") then
             v.Material = Enum.Material.Plastic
             v.Reflectance = 0
             v.CastShadow = false
-
         elseif v:IsA("Accessory") then
             local h = v:FindFirstChild("Handle")
-            if h then
-                h.Transparency = 1
-            end
+            if h then h.Transparency = 1 end
         end
     end
     DisableAnimations(char)
 end
 
--- ================== OTHER PLAYER INVISIBLE ==================
-local function HideOtherPlayer(char)
-    for _,v in ipairs(char:GetDescendants()) do
-        if v:IsA("BasePart") then
-            v.Transparency = 1
-            v.CanCollide = false
-            v.CastShadow = false
-
-        elseif v:IsA("ParticleEmitter")
-            or v:IsA("Trail")
-            or v:IsA("Beam")
-            or v:IsA("Smoke")
-            or v:IsA("Fire") then
-            v.Enabled = false
+-- ================== FORCE INVISIBLE OTHER PLAYER ==================
+local function ForceHideOtherPlayer(char)
+    local function Apply()
+        for _,v in ipairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Transparency = 1
+                v.LocalTransparencyModifier = 1
+                v.CanCollide = false
+                v.CastShadow = false
+            elseif v:IsA("Decal") or v:IsA("Texture") then
+                v.Transparency = 1
+            elseif v:IsA("Accessory") then
+                local h = v:FindFirstChild("Handle")
+                if h then
+                    h.Transparency = 1
+                    h.LocalTransparencyModifier = 1
+                    h.CanCollide = false
+                end
+            elseif v:IsA("ParticleEmitter")
+                or v:IsA("Trail")
+                or v:IsA("Beam")
+                or v:IsA("Smoke")
+                or v:IsA("Fire") then
+                v.Enabled = false
+            end
         end
     end
+
+    Apply()
     DisableAnimations(char)
+
+    char.DescendantAdded:Connect(function()
+        if getgenv().FPS_BOOST then
+            task.wait()
+            Apply()
+        end
+    end)
 end
 
 -- ================== APPLY FPS BOOST ==================
@@ -94,8 +109,8 @@ local function ApplyFPSBoost()
             v:Destroy()
         elseif v:IsA("PostEffect")
             or v:IsA("Atmosphere")
-            or v:IsA("SunRaysEffect")
             or v:IsA("BloomEffect")
+            or v:IsA("SunRaysEffect")
             or v:IsA("DepthOfFieldEffect")
             or v:IsA("ColorCorrectionEffect") then
             v.Enabled = false
@@ -114,7 +129,7 @@ local function ApplyFPSBoost()
         Terrain.WaterTransparency = 1
     end
 
-    -- Map optimize
+    -- Optimize map
     for _,v in ipairs(workspace:GetDescendants()) do
         OptimizeObject(v)
     end
@@ -123,9 +138,9 @@ local function ApplyFPSBoost()
     for _,p in ipairs(Players:GetPlayers()) do
         if p.Character then
             if p == LocalPlayer then
-                LowPolySelf(p.Character)
+                ApplySelfLowPoly(p.Character)
             else
-                HideOtherPlayer(p.Character)
+                ForceHideOtherPlayer(p.Character)
             end
         end
     end
@@ -149,9 +164,9 @@ Players.PlayerAdded:Connect(function(p)
         task.wait(1)
         if getgenv().FPS_BOOST then
             if p == LocalPlayer then
-                LowPolySelf(char)
+                ApplySelfLowPoly(char)
             else
-                HideOtherPlayer(char)
+                ForceHideOtherPlayer(char)
             end
         end
     end)
@@ -160,7 +175,7 @@ end)
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(1)
     if getgenv().FPS_BOOST then
-        LowPolySelf(char)
+        ApplySelfLowPoly(char)
     end
 end)
 
@@ -169,12 +184,12 @@ local gui = Instance.new("ScreenGui", game.CoreGui)
 gui.Name = "FPSBoostUI"
 
 local btn = Instance.new("TextButton", gui)
-btn.Size = UDim2.new(0, 110, 0, 28)
+btn.Size = UDim2.new(0, 120, 0, 30)
 btn.Position = UDim2.new(0, 10, 0, 10)
 btn.BackgroundColor3 = Color3.fromRGB(20,20,20)
 btn.TextColor3 = Color3.new(1,1,1)
-btn.TextSize = 12
 btn.Font = Enum.Font.Code
+btn.TextSize = 12
 btn.BorderSizePixel = 0
 btn.Active = true
 btn.Draggable = true
@@ -183,7 +198,6 @@ btn.Text = "FPS BOOST : ON"
 btn.MouseButton1Click:Connect(function()
     getgenv().FPS_BOOST = not getgenv().FPS_BOOST
     btn.Text = "FPS BOOST : "..(getgenv().FPS_BOOST and "ON" or "OFF")
-
     if getgenv().FPS_BOOST then
         ApplyFPSBoost()
     end
