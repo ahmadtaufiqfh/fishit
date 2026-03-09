@@ -1,23 +1,19 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local itemsFolder = ReplicatedStorage:FindFirstChild("Items")
 
--- 1. Menyiapkan tabel untuk menyimpan nama-nama ikan
+-- 1. Menyiapkan tabel data ikan
 local fishNames = {}
-local tempDict = {} -- Untuk mencegah nama ikan ganda/duplikat masuk ke dalam list
+local tempDict = {}
 
--- 2. Mengumpulkan dan Memfilter Data Ikan
 if itemsFolder then
     print("Mencari data ikan...")
     for _, instance in ipairs(itemsFolder:GetDescendants()) do
         if instance:IsA("ModuleScript") then
-            -- Gunakan pcall agar script tidak error jika ada module yang rusak
             local success, itemData = pcall(function() return require(instance) end)
             
-            -- Cek apakah module berisi tabel, memiliki 'Data', dan Type-nya 'Fish'
             if success and type(itemData) == "table" and itemData.Data and itemData.Data.Type == "Fish" then
                 local fishName = itemData.Data.Name
                 
-                -- Jika ada namanya dan belum terdaftar, masukkan ke list
                 if fishName and not tempDict[fishName] then
                     tempDict[fishName] = true
                     table.insert(fishNames, fishName)
@@ -26,45 +22,44 @@ if itemsFolder then
         end
     end
     
-    -- Mengurutkan nama ikan sesuai abjad (A-Z)
     table.sort(fishNames)
     print("Berhasil menemukan " .. #fishNames .. " jenis ikan!")
 else
-    warn("Folder 'Items' tidak ditemukan di ReplicatedStorage!")
+    warn("Folder 'Items' tidak ditemukan!")
 end
 
 -- ==========================================
--- 3. Membuat UI (User Interface)
+-- 3. Membuat UI dengan Rayfield Library
 -- ==========================================
 
--- Memuat Orion Library (Library UI yang ringan dan populer)
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+-- Memuat Rayfield Library (Link stabil)
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Membuat Jendela Utama
-local Window = OrionLib:MakeWindow({
-    Name = "Fish Dropdown Menu", 
-    HidePremium = true, 
-    SaveConfig = false, 
-    IntroText = "Memuat Data Ikan..."
+-- Membuat Jendela UI
+local Window = Rayfield:CreateWindow({
+   Name = "Fish Hub",
+   LoadingTitle = "Memuat Data Ikan...",
+   LoadingSubtitle = "Tunggu sebentar",
+   ConfigurationSaving = {
+      Enabled = false,
+   },
+   KeySystem = false -- Tidak perlu pakai sistem key/password
 })
 
 -- Membuat Tab Utama
-local MainTab = Window:MakeTab({
-	Name = "Menu Ikan",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
+local MainTab = Window:CreateTab("Menu Ikan", 4483345998) -- Angka adalah ID Icon
 
--- Membuat Dropdown yang berisi daftar ikan
-MainTab:AddDropdown({
-	Name = "Pilih Ikan Target",
-	Default = "",
-	Options = fishNames, -- Memasukkan array fishNames yang sudah kita kumpulkan di atas
-	Callback = function(Value)
-        -- Fungsi ini akan berjalan saat Anda memilih ikan di dropdown
-		print("Ikan yang dipilih di Dropdown: " .. Value)
-	end    
+-- Membuat Dropdown
+local FishDropdown = MainTab:CreateDropdown({
+   Name = "Pilih Ikan Target",
+   Options = fishNames, -- Memasukkan 564 nama ikan ke sini
+   CurrentOption = {""},
+   MultipleOptions = false,
+   Flag = "DropdownIkan", -- Identifier unik
+   Callback = function(Option)
+       -- Option akan berbentuk tabel karena Rayfield mendukung multiple choice
+       -- Kita ambil indeks pertama [1]
+       local selectedFish = Option[1]
+       print("Anda memilih ikan: " .. selectedFish)
+   end,
 })
-
--- Menjalankan UI
-OrionLib:Init()
