@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local itemsFolder = ReplicatedStorage:FindFirstChild("Items")
 local variantsFolder = ReplicatedStorage:FindFirstChild("Variants")
+local tiersModule = ReplicatedStorage:FindFirstChild("Tiers")
 
 -- ==========================================
 -- 1. Mengumpulkan Data
@@ -25,15 +26,12 @@ if itemsFolder then
     table.sort(fishNames)
 end
 
--- Ambil Data Variant (Membaca isi dari ReplicatedStorage.Variants)
+-- Ambil Data Variant
 local variantNames = {}
 if variantsFolder then
-    -- Jika Variants berupa Folder, kita ambil nama anak-anaknya
     for _, child in ipairs(variantsFolder:GetChildren()) do
         table.insert(variantNames, child.Name)
     end
-    
-    -- Jika ternyata Variants berupa ModuleScript, kita ekstrak isinya
     if variantsFolder:IsA("ModuleScript") and #variantNames == 0 then
         local success, varData = pcall(function() return require(variantsFolder) end)
         if success and type(varData) == "table" then
@@ -46,23 +44,44 @@ if variantsFolder then
     table.sort(variantNames)
 end
 
+-- Ambil Data Tiers (Diurutkan berdasarkan Level Tier, bukan Abjad)
+local tierNames = {}
+if tiersModule and tiersModule:IsA("ModuleScript") then
+    local success, tierData = pcall(function() return require(tiersModule) end)
+    if success and type(tierData) == "table" then
+        local rawTiers = {}
+        for _, data in pairs(tierData) do
+            if type(data) == "table" and data.Name then
+                -- Simpan nama dan angka Tier-nya (jika tidak ada angka tier, jadikan 999 agar di bawah)
+                table.insert(rawTiers, {name = data.Name, tierLevel = data.Tier or 999})
+            end
+        end
+        -- Mengurutkan dari Tier terkecil ke terbesar
+        table.sort(rawTiers, function(a, b) return a.tierLevel < b.tierLevel end)
+        
+        -- Memasukkan nama yang sudah diurutkan ke daftar dropdown
+        for _, v in ipairs(rawTiers) do
+            table.insert(tierNames, v.name)
+        end
+    end
+end
+
 -- ==========================================
--- 2. Membuat Custom UI (Dropdown + Search)
+-- 2. Membuat Custom UI (3 Dropdown)
 -- ==========================================
-local guiName = "FishVariantDropdownUI"
+local guiName = "FishVariantTierDropdownUI"
 local parentGui = (gethui and gethui()) or game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 
--- Hapus UI lama jika ada
 if parentGui:FindFirstChild(guiName) then parentGui[guiName]:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = guiName
 ScreenGui.Parent = parentGui
 
--- Frame Utama
+-- Frame Utama (Diperbesar untuk 3 Dropdown)
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 260, 0, 160)
-MainFrame.Position = UDim2.new(0.5, -130, 0.5, -80)
+MainFrame.Size = UDim2.new(0, 260, 0, 200)
+MainFrame.Position = UDim2.new(0.5, -130, 0.5, -100)
 MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 MainFrame.Active = true
 MainFrame.Draggable = true 
@@ -74,7 +93,7 @@ UICorner.Parent = MainFrame
 
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 35)
-Title.Text = "🐟 Auto Fish Target"
+Title.Text = "🐟 Auto Fish Config"
 Title.TextColor3 = Color3.fromRGB(220, 220, 220)
 Title.BackgroundTransparency = 1
 Title.Font = Enum.Font.GothamBold
@@ -82,7 +101,7 @@ Title.TextSize = 14
 Title.Parent = MainFrame
 
 -- ==========================================
--- Fungsi Cerdas Pembuat Dropdown
+-- Fungsi Pembuat Dropdown
 -- ==========================================
 local function CreateDropdown(titleText, yPosition, optionsList, zIndexLayer)
     local DropdownFrame = Instance.new("Frame")
@@ -92,7 +111,6 @@ local function CreateDropdown(titleText, yPosition, optionsList, zIndexLayer)
     DropdownFrame.ZIndex = zIndexLayer
     DropdownFrame.Parent = MainFrame
 
-    -- Tombol Dropdown
     local ToggleBtn = Instance.new("TextButton")
     ToggleBtn.Size = UDim2.new(1, 0, 1, -5)
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -108,9 +126,8 @@ local function CreateDropdown(titleText, yPosition, optionsList, zIndexLayer)
     ToggleCorner.CornerRadius = UDim.new(0, 5)
     ToggleCorner.Parent = ToggleBtn
 
-    -- Panel List (Tersembunyi)
     local ListPanel = Instance.new("Frame")
-    ListPanel.Size = UDim2.new(1, 0, 0, 160)
+    ListPanel.Size = UDim2.new(1, 0, 0, 140)
     ListPanel.Position = UDim2.new(0, 0, 1, 0)
     ListPanel.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     ListPanel.Visible = false
@@ -121,7 +138,6 @@ local function CreateDropdown(titleText, yPosition, optionsList, zIndexLayer)
     PanelCorner.CornerRadius = UDim.new(0, 5)
     PanelCorner.Parent = ListPanel
 
-    -- Kotak Pencarian
     local SearchBox = Instance.new("TextBox")
     SearchBox.Size = UDim2.new(1, -10, 0, 25)
     SearchBox.Position = UDim2.new(0, 5, 0, 5)
@@ -134,7 +150,6 @@ local function CreateDropdown(titleText, yPosition, optionsList, zIndexLayer)
     SearchBox.ZIndex = zIndexLayer + 1
     SearchBox.Parent = ListPanel
 
-    -- Area Scroll
     local ScrollFrame = Instance.new("ScrollingFrame")
     ScrollFrame.Size = UDim2.new(1, -10, 1, -40)
     ScrollFrame.Position = UDim2.new(0, 5, 0, 35)
@@ -148,7 +163,6 @@ local function CreateDropdown(titleText, yPosition, optionsList, zIndexLayer)
     UIListLayout.Padding = UDim.new(0, 2)
     UIListLayout.Parent = ScrollFrame
 
-    -- Mengisi Item
     local buttons = {}
     for _, optName in ipairs(optionsList) do
         local btn = Instance.new("TextButton")
@@ -162,7 +176,6 @@ local function CreateDropdown(titleText, yPosition, optionsList, zIndexLayer)
         btn.ZIndex = zIndexLayer + 1
         btn.Parent = ScrollFrame
 
-        -- Logika Saat Item Dipilih
         btn.MouseButton1Click:Connect(function()
             ToggleBtn.Text = "  " .. titleText .. ": " .. optName
             ListPanel.Visible = false
@@ -172,12 +185,10 @@ local function CreateDropdown(titleText, yPosition, optionsList, zIndexLayer)
         table.insert(buttons, {btn = btn, lowerName = string.lower(optName)})
     end
 
-    -- Update tinggi scroll
     UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
     end)
 
-    -- Logika Pencarian
     SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
         local query = string.lower(SearchBox.Text)
         for _, data in ipairs(buttons) do
@@ -185,24 +196,24 @@ local function CreateDropdown(titleText, yPosition, optionsList, zIndexLayer)
         end
     end)
 
-    -- Logika Buka/Tutup Dropdown
     ToggleBtn.MouseButton1Click:Connect(function()
         ListPanel.Visible = not ListPanel.Visible
     end)
 end
 
 -- ==========================================
--- 3. Memasang Kedua Dropdown ke UI
+-- 3. Memasang Ketiga Dropdown ke UI
 -- ==========================================
--- Angka Z-Index (10 dan 5) sangat penting agar dropdown atas tidak tertutup oleh dropdown bawah
-CreateDropdown("Target Ikan", 45, fishNames, 10)
-CreateDropdown("Target Variant", 85, variantNames, 5)
+-- Perhatikan Z-Index (15, 10, 5) agar panel tidak tertutup elemen di bawahnya
+CreateDropdown("Target Ikan", 45, fishNames, 15)
+CreateDropdown("Target Variant", 85, variantNames, 10)
+CreateDropdown("Target Tier", 125, tierNames, 5)
 
 -- Info Jumlah Data
 local InfoText = Instance.new("TextLabel")
 InfoText.Size = UDim2.new(1, 0, 0, 20)
 InfoText.Position = UDim2.new(0, 0, 1, -25)
-InfoText.Text = "Total Data: " .. #fishNames .. " Ikan | " .. #variantNames .. " Variant"
+InfoText.Text = "Data: " .. #fishNames .. " Ikan | " .. #variantNames .. " Variant | " .. #tierNames .. " Tier"
 InfoText.TextColor3 = Color3.fromRGB(150, 150, 150)
 InfoText.BackgroundTransparency = 1
 InfoText.Font = Enum.Font.Gotham
