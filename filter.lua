@@ -1,73 +1,70 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local itemsFolder = ReplicatedStorage:FindFirstChild("Items")
 
--- 1. Siapkan tabel untuk UI dan tabel untuk Data
-local fishNames = {}     -- Hanya berisi nama ikan untuk dropdown {"Blocky Octopus", "Shark", ...}
-local fishDataMap = {}   -- Menyimpan data lengkap berdasarkan nama ikan
+-- 1. Menyiapkan tabel untuk menyimpan nama-nama ikan
+local fishNames = {}
+local tempDict = {} -- Untuk mencegah nama ikan ganda/duplikat masuk ke dalam list
 
--- 2. Mengumpulkan Data Ikan
+-- 2. Mengumpulkan dan Memfilter Data Ikan
 if itemsFolder then
+    print("Mencari data ikan...")
     for _, instance in ipairs(itemsFolder:GetDescendants()) do
         if instance:IsA("ModuleScript") then
+            -- Gunakan pcall agar script tidak error jika ada module yang rusak
             local success, itemData = pcall(function() return require(instance) end)
             
+            -- Cek apakah module berisi tabel, memiliki 'Data', dan Type-nya 'Fish'
             if success and type(itemData) == "table" and itemData.Data and itemData.Data.Type == "Fish" then
                 local fishName = itemData.Data.Name
                 
-                -- Pastikan ikan punya nama dan belum dimasukkan ke daftar (mencegah duplikat)
-                if fishName and not fishDataMap[fishName] then
+                -- Jika ada namanya dan belum terdaftar, masukkan ke list
+                if fishName and not tempDict[fishName] then
+                    tempDict[fishName] = true
                     table.insert(fishNames, fishName)
-                    fishDataMap[fishName] = itemData -- Simpan data lengkapnya di sini
                 end
             end
         end
     end
     
-    -- Urutkan nama ikan sesuai abjad agar rapi di dropdown
+    -- Mengurutkan nama ikan sesuai abjad (A-Z)
     table.sort(fishNames)
+    print("Berhasil menemukan " .. #fishNames .. " jenis ikan!")
 else
-    warn("Folder 'Items' tidak ditemukan!")
+    warn("Folder 'Items' tidak ditemukan di ReplicatedStorage!")
 end
 
 -- ==========================================
--- 3. Membuat GUI menggunakan Orion Library
+-- 3. Membuat UI (User Interface)
 -- ==========================================
 
--- Memuat Orion Library dari GitHub
+-- Memuat Orion Library (Library UI yang ringan dan populer)
 local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 
 -- Membuat Jendela Utama
-local Window = OrionLib:MakeWindow({Name = "Fish Hub", HidePremium = true, SaveConfig = false})
+local Window = OrionLib:MakeWindow({
+    Name = "Fish Dropdown Menu", 
+    HidePremium = true, 
+    SaveConfig = false, 
+    IntroText = "Memuat Data Ikan..."
+})
 
--- Membuat Tab
+-- Membuat Tab Utama
 local MainTab = Window:MakeTab({
-	Name = "Auto Fish",
+	Name = "Menu Ikan",
 	Icon = "rbxassetid://4483345998",
 	PremiumOnly = false
 })
 
--- Variabel untuk menyimpan ikan yang sedang dipilih saat ini
-local selectedFishName = ""
-
--- Membuat Dropdown
+-- Membuat Dropdown yang berisi daftar ikan
 MainTab:AddDropdown({
 	Name = "Pilih Ikan Target",
 	Default = "",
-	Options = fishNames, -- Memasukkan daftar nama ikan yang sudah difilter
+	Options = fishNames, -- Memasukkan array fishNames yang sudah kita kumpulkan di atas
 	Callback = function(Value)
-        -- Fungsi ini berjalan setiap kali Anda memilih ikan dari dropdown
-		selectedFishName = Value
-		print("Anda memilih: " .. selectedFishName)
-        
-        -- CONTOH PENGEMBANGAN: Mengambil data lengkap dari ikan yang dipilih
-        local selectedData = fishDataMap[selectedFishName]
-        if selectedData then
-            print("ID Ikan Target: " .. tostring(selectedData.Data.Id))
-            print("Harga Jual: " .. tostring(selectedData.SellPrice))
-            -- Di sini Anda bisa menambahkan logika auto-farm/teleport ke depannya
-        end
+        -- Fungsi ini akan berjalan saat Anda memilih ikan di dropdown
+		print("Ikan yang dipilih di Dropdown: " .. Value)
 	end    
 })
 
--- Inisialisasi UI agar muncul di layar
+-- Menjalankan UI
 OrionLib:Init()
